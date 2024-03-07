@@ -1,0 +1,92 @@
+
+import pandas as pd
+from matplotlib import pyplot
+from sklearn.cluster import AgglomerativeClustering 
+import seaborn as sns
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import umap
+import matplotlib.pyplot as plt
+
+# data loading
+
+#dirname = "C:/Users/Mahita S/Desktop/Vtech grad/project aml/"
+#filename1 = "Gene_data_afterpreprocessing.xlsx"
+#filename2 = "GO_data_afterpreprocessing.xlsx"
+dataset1 = pd.read_excel("GO_data_afterpreprocessing.xlsx")
+print(dataset1)
+dataset2 = pd.read_excel("Gene_data_afterpreprocessing.xlsx")
+ar = pd.read_excel("Age_Region_data.xlsx")
+ar = pd.DataFrame(ar)
+# replace dataset1 with dataset2 for similar results
+dataset1 = pd.DataFrame(dataset1)
+dataset1 = dataset1.T
+#print(dataset1)
+dataset1 = dataset1.drop('GOID', axis=0)
+#print(dataset1)
+dataset1 = dataset1.to_numpy()
+scalar = StandardScaler()
+scaled_data = pd.DataFrame(scalar.fit_transform(dataset1))  # scaling the data
+#print(scaled_data)
+# Check the Co-relation between features without PCA
+#sns.heatmap(scaled_data.corr())
+pca = PCA(n_components=30)
+principalComponents = pca.fit_transform(scaled_data)
+#print(principalComponents)
+data_pca = pd.DataFrame(principalComponents,
+                        columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11',
+                                 'PC12', 'PC13', 'PC14', 'PC15', 'PC16', 'PC17', 'PC18', 'PC19', 'PC20', 'PC21', 'PC22',
+                                 'PC23', 'PC24', 'PC25', 'PC26', 'PC27', 'PC28', 'PC29', 'PC30'])
+
+#clustering
+ac = AgglomerativeClustering(n_clusters= 16, affinity='euclidean')
+clus = ac.fit(data_pca)
+labels = clus.labels_
+
+#barplot of clustering
+p1=pd.Series(labels).value_counts()
+p2=pd.Series(labels)
+Title="Clustering result for GO dataset" #using dataset2 will give the clustering for Gene dataset
+pyplot.figure()
+p1.plot(kind='bar',grid=True,title=Title)
+
+# UMAP
+umap_data = data_pca[
+    [
+        'PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11',
+        'PC12', 'PC13', 'PC14', 'PC15', 'PC16', 'PC17', 'PC18', 'PC19', 'PC20', 'PC21', 'PC22',
+        'PC23', 'PC24', 'PC25', 'PC26', 'PC27', 'PC28', 'PC29', 'PC30'
+    ]
+].values
+
+reduce=umap.UMAP(random_state=20191)
+embed=reduce.fit_transform(umap_data)
+pyplot.scatter(embed[:, 0], embed[:, 1], c=labels, s=5, cmap='Spectral')
+print(embed)
+pyplot.colorbar()
+plt.show()
+
+#merging age region data with data_pca
+Table_AR = pd.read_excel('Age_Region_data.xlsx', sheet_name=0)
+AR=Table_AR
+AR_age=AR['Age']
+AR_reg = AR['Region']
+print(AR_age)
+data_pca['age'] = AR_age
+data_pca['region'] = AR_reg 
+
+# plotting clustering for different combinations mentioned in the proposal
+pc=data_pca.to_numpy()
+P7=pc[pc[:,30]=="P7",:] # replacing P7 with P60 
+P7_CB=P7[P7[:,31]=="CB",:]# replacing CB with CP,CTX,HIP,OB,STR(total 12 combinations of age region)
+P7_CB = (P7_CB[:,:30 ])
+
+clus  = ac.fit(P7_CB)
+label = clus.labels_
+r1=pd.Series(label).value_counts()
+r2=pd.Series(label)
+Title="P7CB"
+pyplot.figure()
+r1.plot(kind='bar',grid=True,title=Title)
+ 
